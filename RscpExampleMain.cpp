@@ -105,6 +105,8 @@ int createRequestExample(SRscpFrameBuffer * frameBuffer) {
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_AUTARKY);
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_SELF_CONSUMPTION);
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_COUPLING_MODE);
+		protocol.appendValue(&rootValue, TAG_EMS_REQ_GET_POWER_SETTINGS);
+		protocol.appendValue(&rootValue, TAG_EMS_REQ_GET_IDLE_PERIODS);
 
 		// request battery information
 		SRscpValue batteryContainer;
@@ -410,6 +412,220 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 				}
 			}
 			protocol->destroyValueData(batteryData);
+			break;
+		}
+		case TAG_EMS_GET_IDLE_PERIODS:
+		{
+			uint8_t ucPVIIndex = 0;
+			std::vector<SRscpValue> EMSIdlePeriods = protocol->getValueAsContainer(response);
+			/*
+							6: {
+								active: false,
+								day: 6,
+								end_hour: 21,
+								end_minute: 0,
+								start_hour: 1,
+								start_minute: 0,
+								type: 0
+								},
+							*/
+
+			for (size_t i = 0; i < EMSIdlePeriods.size(); ++i)
+			{
+				uint8_t idlePeriodDay;
+				uint8_t idlePeriodType;
+				uint8_t idlePeriodStartHour;
+				uint8_t idlePeriodStartMinute;
+				uint8_t idlePeriodEndHour;
+				uint8_t idlePeriodEndMinute;
+				bool idlePeriodActive;
+
+				if (EMSIdlePeriods[i].dataType == RSCP::eTypeError)
+				{
+					// handle error for example access denied errors
+					uint32_t uiErrorCode = protocol->getValueAsUInt32(&EMSIdlePeriods[i]);
+					printf("Tag 0x%08X received error code %u.\n", EMSIdlePeriods[i].tag, uiErrorCode);
+					return -1;
+				}
+				switch (EMSIdlePeriods[i].tag)
+				{
+					case TAG_PVI_INDEX:
+					{
+						ucPVIIndex = protocol->getValueAsUChar8(&EMSIdlePeriods[i]);
+						break;
+					}
+					case TAG_EMS_IDLE_PERIOD:
+					{
+						std::vector<SRscpValue> container = protocol->getValueAsContainer(&EMSIdlePeriods[i]);
+						for (size_t n = 0; n < container.size(); n++)
+						{
+							if (container[n].dataType == RSCP::eTypeError)
+							{
+								// handle error for example access denied errors
+								uint32_t uiErrorCode = protocol->getValueAsUInt32(&container[n]);
+								printf("Tag 0x%08X received error code %u.\n", container[n].tag, uiErrorCode);
+								return -1;
+							}
+							switch (container[n].tag) {
+								case TAG_EMS_IDLE_PERIOD_TYPE:
+								{
+									idlePeriodType = protocol->getValueAsUChar8(&container[n]);
+									break;
+								}
+								case TAG_EMS_IDLE_PERIOD_ACTIVE:
+								{
+									idlePeriodActive = protocol->getValueAsBool(&container[n]);
+									break;
+								}
+								case TAG_EMS_IDLE_PERIOD_DAY:
+								{
+									idlePeriodDay = protocol->getValueAsUChar8(&container[n]);
+									break;
+								}
+								case TAG_EMS_IDLE_PERIOD_START:
+								{
+									std::vector<SRscpValue> container2 = protocol->getValueAsContainer(&container[n]);
+									for (size_t o = 0; o < container2.size(); o++)
+									{
+										if (container2[o].dataType == RSCP::eTypeError)
+										{
+											// handle error for example access denied errors
+											uint32_t uiErrorCode = protocol->getValueAsUInt32(&container2[o]);
+											printf("Tag 0x%08X received error code %u.\n", container2[o].tag, uiErrorCode);
+											return -1;
+										}
+										else if (container2[o].tag == TAG_EMS_IDLE_PERIOD_HOUR)
+										{
+											idlePeriodStartHour = protocol->getValueAsUChar8(&container2[o]);
+										}
+										else if (container2[o].tag == TAG_EMS_IDLE_PERIOD_MINUTE)
+										{
+											idlePeriodStartMinute = protocol->getValueAsUChar8(&container2[o]);
+										}
+									}
+									protocol->destroyValueData(container2);
+									break;
+								}
+								case TAG_EMS_IDLE_PERIOD_END:
+								{
+									std::vector<SRscpValue> container2 = protocol->getValueAsContainer(&container[n]);
+									for (size_t o = 0; o < container2.size(); o++)
+									{
+										if (container2[o].dataType == RSCP::eTypeError)
+										{
+											// handle error for example access denied errors
+											uint32_t uiErrorCode = protocol->getValueAsUInt32(&container2[o]);
+											printf("Tag 0x%08X received error code %u.\n", container2[o].tag, uiErrorCode);
+											return -1;
+										}
+										else if (container2[o].tag == TAG_EMS_IDLE_PERIOD_HOUR)
+										{
+											idlePeriodEndHour = protocol->getValueAsUChar8(&container2[o]);
+										}
+										else if (container2[o].tag == TAG_EMS_IDLE_PERIOD_MINUTE)
+										{
+											idlePeriodEndMinute = protocol->getValueAsUChar8(&container2[o]);
+										}
+									}
+									protocol->destroyValueData(container2);
+									break;
+								}
+								default:
+								{
+									printf("Found unknown tag 0x%08X on iteration {%i}{%i}\n", container[n].tag, i, n);
+									break;
+								}
+							}
+						}
+						protocol->destroyValueData(container);
+						break;
+					}
+					default:
+					{
+						printf("Unknown EMS Idle Period tag 0x%08X -> 0x%08X\n", response->tag, EMSIdlePeriods[i].tag);
+						break;
+					}
+				}
+
+				std::string name;
+				if (idlePeriodType == 0) {
+					name = "charge";
+				} else {
+					name = "discharge";
+				}
+				name = std::to_string(idlePeriodDay) + "_" + name;
+
+				mainJSONObject["idle_block"][name]["day"] = idlePeriodDay;
+				mainJSONObject["idle_block"][name]["active"] = idlePeriodActive;
+				mainJSONObject["idle_block"][name]["type"] = idlePeriodType;
+				mainJSONObject["idle_block"][name]["start"] = std::to_string(idlePeriodStartHour) + ":" + std::to_string(idlePeriodStartMinute);
+				mainJSONObject["idle_block"][name]["end"] = std::to_string(idlePeriodEndHour) + ":" + std::to_string(idlePeriodEndMinute);
+			}
+			protocol->destroyValueData(EMSIdlePeriods);
+			break;
+		}
+		case TAG_EMS_GET_POWER_SETTINGS:
+		{
+			uint8_t ucPVIIndex = 0;
+			std::vector<SRscpValue> PWRSettings = protocol->getValueAsContainer(response);
+			for (size_t i = 0; i < PWRSettings.size(); ++i)
+			{
+				if (PWRSettings[i].dataType == RSCP::eTypeError)
+				{
+					// handle error for example access denied errors
+					uint32_t uiErrorCode = protocol->getValueAsUInt32(&PWRSettings[i]);
+					printf("Tag 0x%08X received error code %u.\n", PWRSettings[i].tag, uiErrorCode);
+					return -1;
+				}
+				switch (PWRSettings[i].tag)
+				{
+					case TAG_PVI_INDEX:
+					{
+						ucPVIIndex = protocol->getValueAsUChar8(&PWRSettings[i]);
+						break;
+					}
+					case TAG_EMS_POWER_LIMITS_USED:
+					{
+						bool powerLimitsUsed = protocol->getValueAsBool(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["limits_used"] = powerLimitsUsed;
+						break;
+					}
+					case TAG_EMS_MAX_CHARGE_POWER:
+					{
+						uint8_t maxChargePower = protocol->getValueAsUInt32(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["max_charge_power"] = maxChargePower;
+						break;
+					}
+					case TAG_EMS_MAX_DISCHARGE_POWER:
+					{
+						uint8_t maxDischargePower = protocol->getValueAsUInt32(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["max_discharge_power"] = maxDischargePower;
+						break;
+					}
+					case TAG_EMS_DISCHARGE_START_POWER:
+					{
+						uint8_t dischargeStartPower = protocol->getValueAsUInt32(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["discharge_start_power"] = dischargeStartPower;
+						break;
+					}
+					case TAG_EMS_POWERSAVE_ENABLED:
+					{
+						uint8_t powersaveEnabled = protocol->getValueAsUChar8(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["powersave_enabled"] = powersaveEnabled;
+						break;
+					}
+					case TAG_EMS_WEATHER_REGULATED_CHARGE_ENABLED:
+					{
+						uint8_t weatherRegulatedCharge = protocol->getValueAsUChar8(&PWRSettings[i]);
+						mainJSONObject["pwrs"]["weather_regulated_charge"] = weatherRegulatedCharge;
+						break;
+					}
+					default: {
+						break;
+					}
+				}
+			}
+			protocol->destroyValueData(PWRSettings);
 			break;
 		}
 		case TAG_PVI_DATA:
