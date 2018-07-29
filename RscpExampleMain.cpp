@@ -105,7 +105,6 @@ int createRequestExample(SRscpFrameBuffer * frameBuffer) {
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_AUTARKY);
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_SELF_CONSUMPTION);
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_COUPLING_MODE);
-		protocol.appendValue(&rootValue, TAG_EMS_REQ_GET_POWER_SETTINGS);
 		protocol.appendValue(&rootValue, TAG_EMS_REQ_GET_IDLE_PERIODS);
 
 		// request battery information
@@ -241,7 +240,6 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 		{
 			// response for TAG_EMS_COUPLING_MODE
 			uint8_t iPower = protocol->getValueAsUChar8(response);
-			mainJSONObject["meta"]["operation_mode_desc"] = "0: DC / 1: DC-MultiWR / 2: AC / 3: HYBRID / 4: ISLAND";
 			mainJSONObject["meta"]["operation_mode"] = iPower;
 			break;
 		}
@@ -400,7 +398,6 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 					{
 						uint32_t trainingMode = protocol->getValueAsUChar8(&batteryData[i]);
 						mainJSONObject["battery"]["training"] = trainingMode;
-						mainJSONObject["battery"]["training_desc"] = "0 - Nicht im Training / 1 - Trainingmodus Entladen / 2 - Trainingmodus Laden";
 						break;
 					}
 
@@ -416,20 +413,7 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 		}
 		case TAG_EMS_GET_IDLE_PERIODS:
 		{
-			uint8_t ucPVIIndex = 0;
 			std::vector<SRscpValue> EMSIdlePeriods = protocol->getValueAsContainer(response);
-			/*
-							6: {
-								active: false,
-								day: 6,
-								end_hour: 21,
-								end_minute: 0,
-								start_hour: 1,
-								start_minute: 0,
-								type: 0
-								},
-							*/
-
 			for (size_t i = 0; i < EMSIdlePeriods.size(); ++i)
 			{
 				uint8_t idlePeriodDay;
@@ -449,11 +433,6 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 				}
 				switch (EMSIdlePeriods[i].tag)
 				{
-					case TAG_PVI_INDEX:
-					{
-						ucPVIIndex = protocol->getValueAsUChar8(&EMSIdlePeriods[i]);
-						break;
-					}
 					case TAG_EMS_IDLE_PERIOD:
 					{
 						std::vector<SRscpValue> container = protocol->getValueAsContainer(&EMSIdlePeriods[i]);
@@ -564,70 +543,6 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 			protocol->destroyValueData(EMSIdlePeriods);
 			break;
 		}
-		case TAG_EMS_GET_POWER_SETTINGS:
-		{
-			uint8_t ucPVIIndex = 0;
-			std::vector<SRscpValue> PWRSettings = protocol->getValueAsContainer(response);
-			for (size_t i = 0; i < PWRSettings.size(); ++i)
-			{
-				if (PWRSettings[i].dataType == RSCP::eTypeError)
-				{
-					// handle error for example access denied errors
-					uint32_t uiErrorCode = protocol->getValueAsUInt32(&PWRSettings[i]);
-					printf("Tag 0x%08X received error code %u.\n", PWRSettings[i].tag, uiErrorCode);
-					return -1;
-				}
-				switch (PWRSettings[i].tag)
-				{
-					case TAG_PVI_INDEX:
-					{
-						ucPVIIndex = protocol->getValueAsUChar8(&PWRSettings[i]);
-						break;
-					}
-					case TAG_EMS_POWER_LIMITS_USED:
-					{
-						bool powerLimitsUsed = protocol->getValueAsBool(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["limits_used"] = powerLimitsUsed;
-						break;
-					}
-					case TAG_EMS_MAX_CHARGE_POWER:
-					{
-						uint8_t maxChargePower = protocol->getValueAsUInt32(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["max_charge_power"] = maxChargePower;
-						break;
-					}
-					case TAG_EMS_MAX_DISCHARGE_POWER:
-					{
-						uint8_t maxDischargePower = protocol->getValueAsUInt32(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["max_discharge_power"] = maxDischargePower;
-						break;
-					}
-					case TAG_EMS_DISCHARGE_START_POWER:
-					{
-						uint8_t dischargeStartPower = protocol->getValueAsUInt32(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["discharge_start_power"] = dischargeStartPower;
-						break;
-					}
-					case TAG_EMS_POWERSAVE_ENABLED:
-					{
-						uint8_t powersaveEnabled = protocol->getValueAsUChar8(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["powersave_enabled"] = powersaveEnabled;
-						break;
-					}
-					case TAG_EMS_WEATHER_REGULATED_CHARGE_ENABLED:
-					{
-						uint8_t weatherRegulatedCharge = protocol->getValueAsUChar8(&PWRSettings[i]);
-						mainJSONObject["pwrs"]["weather_regulated_charge"] = weatherRegulatedCharge;
-						break;
-					}
-					default: {
-						break;
-					}
-				}
-			}
-			protocol->destroyValueData(PWRSettings);
-			break;
-		}
 		case TAG_PVI_DATA:
 		{
 			// resposne for TAG_PVI_REQ_DATA
@@ -654,7 +569,6 @@ int handleResponseValue(RscpProtocol *protocol, SRscpValue *response) {
 					{
 						uint8_t systemMode = protocol->getValueAsUChar8(&PVIData[i]);
 						mainJSONObject["pvi"]["system_mode"] = systemMode;
-						mainJSONObject["pvi"]["system_mode_desc"] = "IdleMode = 0, / NormalMode = 1, / GridChargeMode = 2, / BackupPowerMode = 3";
 						break;
 					}
 					case TAG_PVI_ON_GRID:
