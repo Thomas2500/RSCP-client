@@ -22,55 +22,158 @@ The following data will be provided within the file specified with `TARGET_FILE`
 ```json
 {
     "battery": {
-        "charge": 0.0,
-        "current": -0.0,
-        "cycles": 160,
+        "charge": 74.19355010986328,
+        "current": -30.799999237060547,
+        "cycles": 167,
         "training": 0,
-        "training_desc": "0 - Nicht im Training / 1 - Trainingmodus Entladen / 2 - Trainingmodus Laden",
-        "voltage": 44.90999984741211
+        "voltage": 48.810001373291016
+    },
+    "idle_block": {
+        "0_charge": {
+            "active": false,
+            "day": 0,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "0_discharge": {
+            "active": false,
+            "day": 0,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 1
+        },
+        "1_charge": {
+            "active": false,
+            "day": 1,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "1_discharge": {
+            "active": false,
+            "day": 1,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 1
+        },
+        "2_charge": {
+            "active": false,
+            "day": 2,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "2_discharge": {
+            "active": false,
+            "day": 2,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 1
+        },
+        "3_charge": {
+            "active": false,
+            "day": 3,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "3_discharge": {
+            "active": false,
+            "day": 3,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 1
+        },
+        "4_charge": {
+            "active": false,
+            "day": 4,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "4_discharge": {
+            "active": false,
+            "day": 4,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 1
+        },
+        "5_charge": {
+            "active": false,
+            "day": 5,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "5_discharge": {
+            "active": true,
+            "day": 5,
+            "end": "20:0",
+            "start": "12:0",
+            "type": 1
+        },
+        "6_charge": {
+            "active": false,
+            "day": 6,
+            "end": "21:0",
+            "start": "1:0",
+            "type": 0
+        },
+        "6_discharge": {
+            "active": true,
+            "day": 6,
+            "end": "20:0",
+            "start": "12:0",
+            "type": 1
+        }
     },
     "meta": {
-        "autarky": 5.7694783210754395,
-        "consumption": 100.0,
+        "autarky": 99.14571380615234,
+        "consumption": 99.48719787597656,
         "operation_mode": 3,
-        "operation_mode_desc": "0: DC / 1: DC-MultiWR / 2: AC / 3: HYBRID / 4: ISLAND",
         "serial_number": "S10-XXXXXXXXXXXX",
-        "timestamp": 1532287276
+        "timestamp": 1532904452
     },
     "pm": {
         "active_phases": 7,
         "lm0_state": true,
-        "power1": -95.0,
-        "power2": 3628.0,
-        "power3": 1021.0,
-        "voltage1": 232.91000366210938,
-        "voltage2": 226.33999633789063,
-        "voltage3": 229.6699981689453
+        "power1": -179.0,
+        "power2": -134.0,
+        "power3": 265.0,
+        "voltage1": 231.27999877929688,
+        "voltage2": 232.22999572753906,
+        "voltage3": 229.00999450683594
     },
     "power": {
         "add": 0,
-        "bat": 0,
-        "grid": 4563,
-        "home": 4839,
-        "pv": 276
+        "bat": -1499,
+        "grid": -8,
+        "home": 1413,
+        "pv": 0
     },
     "prog": {
         "mem_rss": 840.0,
         "mem_vm": 2456.0
     },
     "pvi": {
-        "dc0_current": 0.3499999940395355,
-        "dc0_power": 158.0,
-        "dc0_voltage": 445.0,
-        "dc1_current": 0.3100000023841858,
-        "dc1_power": 139.0,
-        "dc1_voltage": 444.0,
+        "dc0_current": 0.0,
+        "dc0_power": 0.0,
+        "dc0_voltage": 159.0,
+        "dc1_current": 0.0,
+        "dc1_power": 0.0,
+        "dc1_voltage": 161.0,
         "on_grid": true,
-        "system_mode": 1,
-        "system_mode_desc": "IdleMode = 0, / NormalMode = 1, / GridChargeMode = 2, / BackupPowerMode = 3"
+        "system_mode": 2
     }
 }
 ```
+
+Some fields are hard to understand what the value means which are provided by them. The following list expains some fields of the json data:
+
+- `battery->training` 0 - Not in training / 1 - trainingmode discharge / 2 - trainingmode charge
+- `meta->operation_mode` 0: DC / 1: DC-MultiWR / 2: AC / 3: HYBRID / 4: ISLAND
+- `pvi->system_mode` IdleMode = 0, / NormalMode = 1, / GridChargeMode = 2, / BackupPowerMode = 3
 
 ## Attention
 
